@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #1a1b26;
+  --color-bg-secondary: #24283b;
+  --color-bg-surface: #2f3347;
+  --color-bg-hover: #3b3f54;
+  --color-text-primary: #c0caf5;
+  --color-text-secondary: #a9b1d6;
+  --color-text-muted: #565f89;
+  --color-border: #3b3f54;
+  --color-accent: #7aa2f7;
+  --color-accent-hover: #89b4fa;
+  --color-error: #f7768e;
+  --color-success: #9ece6a;
+  --color-warning: #e0af68;
+}
+
+/* ── Theme: Dark (default) ── */
+[data-theme="dark"] {
+  --color-bg-primary: #1a1b26;
+  --color-bg-secondary: #24283b;
+  --color-bg-surface: #2f3347;
+  --color-bg-hover: #3b3f54;
+  --color-text-primary: #c0caf5;
+  --color-text-secondary: #a9b1d6;
+  --color-text-muted: #565f89;
+  --color-border: #3b3f54;
+  --color-accent: #7aa2f7;
+  --color-accent-hover: #89b4fa;
+  --color-error: #f7768e;
+  --color-success: #9ece6a;
+  --color-warning: #e0af68;
+}
+
+/* ── Theme: Light ── */
+[data-theme="light"] {
+  --color-bg-primary: #f8f9fa;
+  --color-bg-secondary: #ffffff;
+  --color-bg-surface: #eef0f4;
+  --color-bg-hover: #e2e5ea;
+  --color-text-primary: #1a1b26;
+  --color-text-secondary: #4a4e69;
+  --color-text-muted: #8b8fa3;
+  --color-border: #d4d7e0;
+  --color-accent: #4a6cf7;
+  --color-accent-hover: #3b5ce0;
+  --color-error: #e53e3e;
+  --color-success: #38a169;
+  --color-warning: #d69e2e;
+}
+
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+body {
+  margin: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@supports (height: 100dvh) {
+  .h-screen { height: 100dvh; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Typing indicator animation */
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
+}
+.typing-dot {
+  animation: pulse-dot 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
