@@ -1,7 +1,8 @@
-import { Pause, Play, Square, SkipForward, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { Pause, Play, Square, SkipForward, Plus, Share2, Check } from 'lucide-react'
 import { useDebateStore } from '@/stores/debateStore'
 import { PROVIDER_LABELS, PROVIDER_COLORS, type AIProvider } from '@/types'
-import { cn } from '@/lib/utils'
+import { cn, formatDebateForShare, formatTimestampUTC, shareText } from '@/lib/utils'
 
 const STATUS_LABELS: Record<string, string> = {
   running: '진행 중',
@@ -20,6 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function ControlBar() {
   const status = useDebateStore((s) => s.status)
   const config = useDebateStore((s) => s.config)
+  const messages = useDebateStore((s) => s.messages)
   const currentRound = useDebateStore((s) => s.currentRound)
   const loadingProvider = useDebateStore((s) => s.loadingProvider)
   const countdown = useDebateStore((s) => s.countdown)
@@ -29,9 +31,34 @@ export function ControlBar() {
   const stopDebate = useDebateStore((s) => s.stopDebate)
   const nextTurn = useDebateStore((s) => s.nextTurn)
   const reset = useDebateStore((s) => s.reset)
+  const [shareOk, setShareOk] = useState(false)
 
   const maxRounds = config?.maxRounds || 3
   const isFinished = status === 'completed' || status === 'error'
+
+  const handleShare = async () => {
+    if (!config || messages.length === 0) return
+
+    const dateStr = formatTimestampUTC(messages[0]!.timestamp, 'full')
+    const text = formatDebateForShare(
+      config.topic,
+      config.mode,
+      config.participants,
+      messages.map((m) => ({
+        provider: m.provider,
+        content: m.content,
+        round: m.round,
+        error: m.error,
+      })),
+      dateStr,
+    )
+
+    const result = await shareText(`AI 토론: ${config.topic}`, text)
+    if (result !== 'failed') {
+      setShareOk(true)
+      setTimeout(() => setShareOk(false), 2500)
+    }
+  }
 
   return (
     <div className="border-b border-border flex items-center justify-between px-4 py-2.5 shrink-0 bg-bg-secondary/60 backdrop-blur-sm">
@@ -53,19 +80,23 @@ export function ControlBar() {
         {/* Participant badges */}
         {config && (
           <div className="flex items-center gap-1">
-            {config.participants.map((p: AIProvider) => (
-              <div
-                key={p}
-                className={cn(
-                  'w-2 h-2 rounded-full transition-all',
-                  loadingProvider === p && 'ring-2 ring-offset-1 ring-offset-bg-secondary animate-subtle-pulse',
-                )}
-                style={{
-                  backgroundColor: PROVIDER_COLORS[p],
-                }}
-                title={PROVIDER_LABELS[p]}
-              />
-            ))}
+            {config.participants.map((p: AIProvider) => {
+              const isJudge = config.mode === 'battle' && config.judgeProvider === p
+              return (
+                <div
+                  key={p}
+                  className={cn(
+                    'w-2 h-2 rounded-full transition-all',
+                    loadingProvider === p && 'ring-2 ring-offset-1 ring-offset-bg-secondary animate-subtle-pulse',
+                    isJudge && 'ring-1 ring-warning',
+                  )}
+                  style={{
+                    backgroundColor: PROVIDER_COLORS[p],
+                  }}
+                  title={`${PROVIDER_LABELS[p]}${isJudge ? ' (심판)' : ''}`}
+                />
+              )
+            })}
           </div>
         )}
 
@@ -100,6 +131,21 @@ export function ControlBar() {
 
       {/* Right: control buttons */}
       <div className="flex items-center gap-1">
+        {/* Share button (when there are messages) */}
+        {messages.length > 0 && (
+          <button
+            onClick={() => void handleShare()}
+            className="p-2 hover:bg-bg-hover rounded-lg transition text-text-muted hover:text-accent"
+            title="토론 내용 공유"
+          >
+            {shareOk ? (
+              <Check className="w-4 h-4 text-success" />
+            ) : (
+              <Share2 className="w-4 h-4" />
+            )}
+          </button>
+        )}
+
         {status === 'running' && (
           <button
             onClick={pauseDebate}

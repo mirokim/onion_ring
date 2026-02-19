@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, ChevronDown, ChevronRight, Trash2, MessageSquare, History, Sun, Moon, Settings } from 'lucide-react'
+import { Eye, EyeOff, Trash2, MessageSquare, History, Sun, Moon, Settings, X } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useHistoryStore } from '@/stores/historyStore'
 import { cn, formatTimestampUTC } from '@/lib/utils'
@@ -11,57 +11,87 @@ import {
   type AIProvider,
 } from '@/types'
 
-function ProviderSection({ provider }: { provider: AIProvider }) {
+// ── Settings Modal (AI Provider Configuration) ──
+
+function SettingsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-bg-secondary border border-border rounded-2xl shadow-2xl overflow-hidden z-10 max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2.5">
+            <Settings className="w-4 h-4 text-text-muted" />
+            <h2 className="text-sm font-bold text-text-primary">AI 설정</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-bg-hover rounded-lg transition text-text-muted hover:text-text-primary"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Provider List */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {PROVIDERS.map((p) => (
+            <ProviderCard key={p} provider={p} />
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-border shrink-0">
+          <p className="text-[10px] text-text-muted leading-relaxed">
+            API 키는 브라우저에 난독화되어 저장됩니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProviderCard({ provider }: { provider: AIProvider }) {
   const { configs, updateConfig } = useSettingsStore()
   const config = configs[provider]
   const [showKey, setShowKey] = useState(false)
-  const [expanded, setExpanded] = useState(config.enabled)
 
   const color = PROVIDER_COLORS[provider]
   const label = PROVIDER_LABELS[provider]
 
   return (
-    <div className="mx-3 mb-2">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className={cn(
-          'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition text-left',
-          expanded ? 'bg-bg-surface' : 'hover:bg-bg-hover',
-        )}
-      >
-        <div
-          className={cn('w-2 h-2 rounded-full shrink-0 transition-all', config.enabled && 'ring-2 ring-offset-1 ring-offset-bg-secondary')}
-          style={{ backgroundColor: config.enabled ? color : 'var(--color-text-muted)' }}
-        />
-        <span className="flex-1 text-sm font-medium text-text-primary">{label}</span>
-        {config.enabled && config.apiKey.trim() && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">ON</span>
-        )}
-        {expanded ? (
-          <ChevronDown className="w-3.5 h-3.5 text-text-muted" />
-        ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-text-muted" />
-        )}
-      </button>
+    <div className={cn(
+      'rounded-xl border p-4 space-y-3 transition',
+      config.enabled ? 'border-border bg-bg-surface' : 'border-border/50 bg-bg-primary/50',
+    )}>
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div
+            className={cn('w-2.5 h-2.5 rounded-full shrink-0 transition-all', config.enabled && 'ring-2 ring-offset-1 ring-offset-bg-surface')}
+            style={{ backgroundColor: config.enabled ? color : 'var(--color-text-muted)' }}
+          />
+          <span className="text-sm font-semibold text-text-primary">{label}</span>
+          {config.enabled && config.apiKey.trim() && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">ON</span>
+          )}
+        </div>
 
-      {expanded && (
-        <div className="px-3 py-2.5 space-y-2.5">
-          {/* Enable toggle */}
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <div className={cn(
-              'relative w-8 h-[18px] rounded-full transition-colors cursor-pointer',
-              config.enabled ? 'bg-accent' : 'bg-bg-hover',
-            )}
-              onClick={() => updateConfig(provider, { enabled: !config.enabled })}
-            >
-              <div className={cn(
-                'absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform',
-                config.enabled ? 'translate-x-[16px]' : 'translate-x-[2px]',
-              )} />
-            </div>
-            <span className="text-xs text-text-secondary">활성화</span>
-          </label>
+        {/* Enable toggle */}
+        <div className={cn(
+          'relative w-9 h-5 rounded-full transition-colors cursor-pointer',
+          config.enabled ? 'bg-accent' : 'bg-bg-hover',
+        )}
+          onClick={() => updateConfig(provider, { enabled: !config.enabled })}
+        >
+          <div className={cn(
+            'absolute top-[3px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform',
+            config.enabled ? 'translate-x-[19px]' : 'translate-x-[3px]',
+          )} />
+        </div>
+      </div>
 
+      {config.enabled && (
+        <>
           {/* API Key */}
           <div className="relative">
             <input
@@ -96,11 +126,13 @@ function ProviderSection({ provider }: { provider: AIProvider }) {
               </option>
             ))}
           </select>
-        </div>
+        </>
       )}
     </div>
   )
 }
+
+// ── History Section ──
 
 function HistorySection() {
   const debates = useHistoryStore((s) => s.debates)
@@ -115,7 +147,8 @@ function HistorySection() {
 
   if (debates.length === 0) {
     return (
-      <div className="px-5 py-6 text-center">
+      <div className="px-5 py-10 text-center">
+        <History className="w-8 h-8 text-text-muted/30 mx-auto mb-3" />
         <p className="text-xs text-text-muted">아직 저장된 토론이 없습니다</p>
       </div>
     )
@@ -176,6 +209,8 @@ function HistorySection() {
   )
 }
 
+// ── Theme Toggle ──
+
 function ThemeToggle() {
   const { theme, setTheme } = useSettingsStore()
   const isDark = theme === 'dark'
@@ -190,36 +225,67 @@ function ThemeToggle() {
   )
 }
 
-export function Sidebar() {
+// ── Provider Status Summary (compact badges for sidebar header) ──
+
+function ProviderStatusBadges() {
+  const configs = useSettingsStore((s) => s.configs)
+  const enabledCount = PROVIDERS.filter((p) => configs[p].enabled && configs[p].apiKey.trim()).length
+
   return (
-    <div className="flex flex-col h-full">
-      {/* AI Providers Header */}
-      <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
-        <Settings className="w-3.5 h-3.5 text-text-muted" />
-        <h2 className="text-[11px] font-semibold tracking-wider text-text-muted uppercase">AI Providers</h2>
-      </div>
-
-      <div className="overflow-y-auto py-2">
-        {PROVIDERS.map((p) => (
-          <ProviderSection key={p} provider={p} />
-        ))}
-      </div>
-
-      {/* History Section */}
-      <div className="border-t border-border flex flex-col min-h-0 flex-1">
-        <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
-          <History className="w-3.5 h-3.5 text-text-muted" />
-          <h2 className="text-[11px] font-semibold tracking-wider text-text-muted uppercase">History</h2>
-        </div>
-        <HistorySection />
-      </div>
-
-      <div className="px-4 py-3 border-t border-border shrink-0 space-y-1.5">
-        <ThemeToggle />
-        <p className="text-[10px] text-text-muted leading-relaxed px-3">
-          API 키는 브라우저에 난독화되어 저장됩니다.
-        </p>
-      </div>
+    <div className="flex items-center gap-1.5">
+      {PROVIDERS.map((p) => {
+        const c = configs[p]
+        const active = c.enabled && c.apiKey.trim()
+        return (
+          <div
+            key={p}
+            className={cn('w-2 h-2 rounded-full transition-all', active && 'ring-1 ring-offset-1 ring-offset-bg-secondary')}
+            style={{ backgroundColor: active ? PROVIDER_COLORS[p] : 'var(--color-border)' }}
+            title={`${PROVIDER_LABELS[p]}: ${active ? 'ON' : 'OFF'}`}
+          />
+        )
+      })}
+      <span className="text-[10px] text-text-muted ml-0.5">{enabledCount}/3</span>
     </div>
+  )
+}
+
+// ── Main Sidebar ──
+
+export function Sidebar() {
+  const [showSettings, setShowSettings] = useState(false)
+
+  return (
+    <>
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Settings button + Provider status */}
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
+          <ProviderStatusBadges />
+          <button
+            onClick={() => setShowSettings(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-bg-hover transition text-text-muted hover:text-text-primary text-xs"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span className="font-medium">설정</span>
+          </button>
+        </div>
+
+        {/* History Section: now takes all main space */}
+        <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+          <div className="px-5 py-3 flex items-center gap-2 shrink-0">
+            <History className="w-3.5 h-3.5 text-text-muted" />
+            <h2 className="text-[11px] font-semibold tracking-wider text-text-muted uppercase">토론 기록</h2>
+          </div>
+          <HistorySection />
+        </div>
+
+        <div className="px-4 py-2.5 border-t border-border shrink-0">
+          <ThemeToggle />
+        </div>
+      </div>
+
+      {/* Settings Modal */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+    </>
   )
 }

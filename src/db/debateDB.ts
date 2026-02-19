@@ -31,6 +31,8 @@ export interface StoredMessage {
   round: number
   timestamp: number
   error?: string
+  messageType?: string
+  roleName?: string
 }
 
 export interface StoredReferenceFile {
@@ -212,6 +214,20 @@ class DebateDB {
 
     this.db.run('CREATE INDEX IF NOT EXISTS idx_messages_debate ON messages(debate_id)')
     this.db.run('CREATE INDEX IF NOT EXISTS idx_debates_created ON debates(created_at)')
+
+    // Migration: add message_type column if it doesn't exist
+    try {
+      this.db.run('ALTER TABLE messages ADD COLUMN message_type TEXT DEFAULT NULL')
+    } catch {
+      // Column already exists, ignore
+    }
+
+    // Migration: add role_name column if it doesn't exist
+    try {
+      this.db.run('ALTER TABLE messages ADD COLUMN role_name TEXT DEFAULT NULL')
+    } catch {
+      // Column already exists, ignore
+    }
   }
 
   // ── Query Helpers (Onion Editor pattern) ──
@@ -301,6 +317,8 @@ class DebateDB {
       round: r.round as number,
       timestamp: r.timestamp as number,
       error: (r.error as string) || undefined,
+      messageType: (r.message_type as string) || undefined,
+      roleName: (r.role_name as string) || undefined,
     }
   }
 
@@ -344,8 +362,8 @@ class DebateDB {
     try {
       for (const msg of messages) {
         const stmt = this.db.prepare(
-          `INSERT INTO messages (id, debate_id, provider, content, round, timestamp, error)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO messages (id, debate_id, provider, content, round, timestamp, error, message_type, role_name)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         stmt.bind([
           msg.id,
@@ -355,6 +373,8 @@ class DebateDB {
           msg.round,
           msg.timestamp,
           msg.error ?? null,
+          msg.messageType ?? null,
+          msg.roleName ?? null,
         ])
         stmt.step()
         stmt.free()

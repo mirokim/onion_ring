@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react'
-import { Play, AlertCircle, FileText, Upload, X, Camera as CameraIcon, ImagePlus } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Play, AlertCircle, FileText, Upload, X, Camera as CameraIcon, ImagePlus, Sparkles } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useDebateStore } from '@/stores/debateStore'
+import { useHistoryStore } from '@/stores/historyStore'
 import { cn } from '@/lib/utils'
 import { generateId } from '@/lib/utils'
 import { isCameraAvailable, capturePhoto, pickFromGallery } from '@/lib/camera'
@@ -10,6 +11,7 @@ import {
   PROVIDER_LABELS,
   PROVIDER_COLORS,
   ROLE_OPTIONS,
+  ROLE_GROUPS,
   type AIProvider,
   type DiscussionMode,
   type PacingMode,
@@ -21,12 +23,14 @@ const MODE_LABELS: Record<DiscussionMode, string> = {
   roundRobin: '라운드 로빈',
   freeDiscussion: '자유 토론',
   roleAssignment: '역할 배정',
+  battle: '⚔️ 결전모드',
 }
 
 const MODE_DESCRIPTIONS: Record<DiscussionMode, string> = {
   roundRobin: 'AI들이 순서대로 돌아가며 발언합니다',
   freeDiscussion: 'AI들이 자유롭게 서로의 의견에 반박/동의합니다',
-  roleAssignment: '각 AI에 역할(찬성/반대 등)을 부여하여 토론합니다',
+  roleAssignment: '각 AI에 캐릭터/역할을 부여하여 토론합니다',
+  battle: 'AI 2명이 대결하고 1명이 심판으로 채점합니다',
 }
 
 const DELAY_OPTIONS = [5, 10, 15, 30] as const
@@ -36,6 +40,98 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const MAX_FILES = 5
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf']
 const ACCEPTED_EXTENSIONS = '.png,.jpg,.jpeg,.gif,.webp,.pdf'
+
+// Build grouped options lookup for role select
+const ROLE_LABEL_MAP = new Map(ROLE_OPTIONS.map((r) => [r.value, r.label]))
+
+// ── Topic Suggestions ──
+
+const DEFAULT_SUGGESTIONS = [
+  'AI가 인간의 창의성을 대체할 수 있는가?',
+  '원격 근무가 사무실 근무보다 생산적인가?',
+  '소셜 미디어는 민주주의에 도움이 되는가?',
+  '우주 개발에 국가 예산을 투자해야 하는가?',
+]
+
+// Generate topic suggestions inspired by recent debate history
+function buildSuggestions(recentTopics: string[]): string[] {
+  if (recentTopics.length === 0) return DEFAULT_SUGGESTIONS
+
+  // Category-based spin-off templates keyed by rough keyword matching
+  const spinOffs: Record<string, string[]> = {
+    AI: [
+      'AI 규제는 혁신을 방해하는가?',
+      'AI 창작물에 저작권을 부여해야 하는가?',
+      'AI 면접관이 인간보다 공정할 수 있는가?',
+      'AI가 교사를 대체할 수 있는가?',
+    ],
+    교육: [
+      '대학 교육은 여전히 필수인가?',
+      '코딩 교육을 초등학교부터 의무화해야 하는가?',
+      '시험 없는 교육이 가능한가?',
+      '온라인 학위가 오프라인 학위와 동등한 가치를 갖는가?',
+    ],
+    경제: [
+      '기본 소득제가 경제에 긍정적인가?',
+      '암호화폐가 법정화폐를 대체할 수 있는가?',
+      '부유세 도입은 정당한가?',
+      '4일 근무제는 경제적으로 실현 가능한가?',
+    ],
+    환경: [
+      '원자력 에너지는 친환경적인가?',
+      '탄소세가 기후변화 해결에 효과적인가?',
+      '전기차 보조금 정책은 지속되어야 하는가?',
+      '선진국이 개발도상국의 환경 비용을 부담해야 하는가?',
+    ],
+    사회: [
+      '익명 인터넷은 허용되어야 하는가?',
+      '동물 실험은 윤리적으로 정당화될 수 있는가?',
+      '사형 제도는 폐지되어야 하는가?',
+      '의무 투표제가 민주주의에 도움이 되는가?',
+    ],
+    기술: [
+      '자율주행차 사고의 법적 책임은 누구에게 있는가?',
+      '메타버스가 현실 사회를 대체할 수 있는가?',
+      '양자 컴퓨터가 현재 암호 체계를 무력화할 것인가?',
+      '뇌-컴퓨터 인터페이스의 상용화는 윤리적인가?',
+    ],
+  }
+
+  // Match topics to categories by keyword
+  const matchedCategories = new Set<string>()
+  for (const topic of recentTopics) {
+    for (const [keyword] of Object.entries(spinOffs)) {
+      if (topic.includes(keyword)) {
+        matchedCategories.add(keyword)
+      }
+    }
+  }
+
+  // Collect candidate suggestions from matched and fallback categories
+  const candidates: string[] = []
+
+  // Add from matched categories first
+  for (const cat of matchedCategories) {
+    const items = spinOffs[cat]
+    if (items) candidates.push(...items)
+  }
+
+  // Fill with suggestions from other categories
+  for (const [cat, topics] of Object.entries(spinOffs)) {
+    if (!matchedCategories.has(cat)) {
+      candidates.push(...topics)
+    }
+  }
+
+  // Filter out topics already debated
+  const filtered = candidates.filter(
+    (s) => !recentTopics.some((t) => t === s),
+  )
+
+  // Shuffle and pick 4
+  const shuffled = filtered.sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, 4)
+}
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -52,6 +148,7 @@ export function TopicInput() {
   const [maxRounds, setMaxRounds] = useState(3)
   const [selectedProviders, setSelectedProviders] = useState<AIProvider[]>([])
   const [roles, setRoles] = useState<RoleConfig[]>([])
+  const [judgeProvider, setJudgeProvider] = useState<AIProvider | null>(null)
 
   // Reference data state
   const [useReference, setUseReference] = useState(false)
@@ -64,13 +161,28 @@ export function TopicInput() {
 
   const configs = useSettingsStore((s) => s.configs)
   const startDebate = useDebateStore((s) => s.startDebate)
+  const debates = useHistoryStore((s) => s.debates)
+  const loadDebates = useHistoryStore((s) => s.loadDebates)
+
+  // Load debates on mount for suggestions
+  useEffect(() => {
+    void loadDebates()
+  }, [loadDebates])
+
+  // Build topic suggestions from recent history
+  const suggestions = useMemo(() => {
+    const recentTopics = debates.slice(0, 10).map((d) => d.topic)
+    return buildSuggestions(recentTopics)
+  }, [debates])
 
   const enabledProviders = useMemo(
     () => PROVIDERS.filter((p) => configs[p].enabled && configs[p].apiKey.trim().length > 0),
     [configs],
   )
 
-  const canStart = topic.trim().length > 0 && selectedProviders.length >= 2
+  const canStart = topic.trim().length > 0
+    && selectedProviders.length >= 2
+    && (mode !== 'battle' || (selectedProviders.length >= 3 && judgeProvider !== null))
 
   // Sync role configs when providers change
   const toggleProvider = (provider: AIProvider) => {
@@ -82,6 +194,10 @@ export function TopicInput() {
         const existing = new Map(prevRoles.map((r) => [r.provider, r]))
         return next.map((p) => existing.get(p) || { provider: p, role: '중립' })
       })
+      // Clear judge if no longer in selected
+      if (judgeProvider && !next.includes(judgeProvider)) {
+        setJudgeProvider(null)
+      }
       return next
     })
   }
@@ -138,7 +254,8 @@ export function TopicInput() {
       topic: topic.trim(),
       maxRounds,
       participants: selectedProviders,
-      roles: mode === 'roleAssignment' ? roles : [],
+      roles: (mode === 'roleAssignment' || mode === 'battle') ? roles : [],
+      judgeProvider: mode === 'battle' ? judgeProvider ?? undefined : undefined,
       referenceText: useReference ? referenceText : '',
       useReference,
       referenceFiles: useReference ? referenceFiles : [],
@@ -152,12 +269,28 @@ export function TopicInput() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-xl mx-auto px-6 py-10 space-y-8">
-        {/* Title */}
-        <div className="text-center space-y-3">
-          <h2 className="text-2xl font-bold text-text-primary tracking-tight">AI 토론</h2>
-          <p className="text-sm text-text-muted leading-relaxed">
-            주제를 입력하면 여러 AI가 서로 토론하며<br />다양한 관점을 제시합니다
-          </p>
+        {/* Topic Suggestions */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 justify-center">
+            <Sparkles className="w-4 h-4 text-accent" />
+            <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">추천 주제</span>
+          </div>
+          <div className="grid grid-cols-1 gap-2">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => setTopic(s)}
+                className={cn(
+                  'text-left px-4 py-2.5 text-xs rounded-xl border transition-all leading-relaxed',
+                  topic === s
+                    ? 'bg-accent/10 border-accent/40 text-accent font-medium'
+                    : 'bg-bg-surface border-border text-text-secondary hover:bg-bg-hover hover:border-border',
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Topic */}
@@ -175,7 +308,7 @@ export function TopicInput() {
         {/* Mode Selection */}
         <div className="space-y-2.5">
           <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">토론 모드</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {(Object.keys(MODE_LABELS) as DiscussionMode[]).map((m) => (
               <button
                 key={m}
@@ -201,6 +334,12 @@ export function TopicInput() {
             <div className="flex items-center gap-2 text-warning text-xs bg-warning/10 px-3 py-2 rounded-lg">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               <span>사이드바에서 2개 이상의 AI를 활성화하고 API 키를 입력하세요</span>
+            </div>
+          )}
+          {mode === 'battle' && selectedProviders.length < 3 && selectedProviders.length >= 2 && (
+            <div className="flex items-center gap-2 text-warning text-xs bg-warning/10 px-3 py-2 rounded-lg">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>결전모드는 3개의 AI가 필요합니다 (토론자 2 + 심판 1)</span>
             </div>
           )}
           <div className="flex gap-2">
@@ -237,12 +376,51 @@ export function TopicInput() {
           </div>
         </div>
 
-        {/* Role Assignment */}
-        {mode === 'roleAssignment' && selectedProviders.length > 0 && (
+        {/* Judge Selection (Battle Mode) */}
+        {mode === 'battle' && selectedProviders.length >= 3 && (
           <div className="space-y-2.5">
-            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">역할 배정</label>
+            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+              ⚖️ 심판 AI 선택
+            </label>
+            <div className="flex gap-2">
+              {selectedProviders.map((p) => {
+                const isJudge = judgeProvider === p
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setJudgeProvider(p)}
+                    className={cn(
+                      'flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm transition-all',
+                      isJudge
+                        ? 'bg-warning/10 border-warning/40 text-warning font-semibold shadow-sm'
+                        : 'bg-bg-surface border-border text-text-secondary hover:bg-bg-hover',
+                    )}
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: PROVIDER_COLORS[p] }}
+                    />
+                    {PROVIDER_LABELS[p]}
+                    {isJudge && <span className="text-[10px]">⚖️</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[11px] text-text-muted pl-1">
+              심판 AI는 토론에 참여하지 않고 각 라운드를 채점합니다
+            </p>
+          </div>
+        )}
+
+        {/* Role Assignment (역할 배정 모드 + 결전모드) */}
+        {(mode === 'roleAssignment' || mode === 'battle') && selectedProviders.length > 0 && (
+          <div className="space-y-2.5">
+            <label className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">
+              {mode === 'battle' ? '⚔️ 캐릭터 배정 (선택)' : '역할 배정'}
+            </label>
             <div className="space-y-2 bg-bg-surface rounded-xl p-3 border border-border">
               {selectedProviders.map((p) => {
+                const isJudgeAI = mode === 'battle' && judgeProvider === p
                 const role = roles.find((r) => r.provider === p)?.role || '중립'
                 return (
                   <div key={p} className="flex items-center gap-3">
@@ -251,17 +429,31 @@ export function TopicInput() {
                       style={{ backgroundColor: PROVIDER_COLORS[p] }}
                     />
                     <span className="text-xs text-text-secondary w-16 font-medium">{PROVIDER_LABELS[p]}</span>
-                    <select
-                      value={role}
-                      onChange={(e) => updateRole(p, e.target.value)}
-                      className="flex-1 px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded-lg text-text-primary focus:outline-none focus:ring-1 focus:ring-accent/30"
-                    >
-                      {ROLE_OPTIONS.map((r) => (
-                        <option key={r.value} value={r.label}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </select>
+                    {isJudgeAI ? (
+                      <span className="flex-1 px-2.5 py-1.5 text-xs text-warning font-semibold">
+                        ⚖️ 심판
+                      </span>
+                    ) : (
+                      <select
+                        value={role}
+                        onChange={(e) => updateRole(p, e.target.value)}
+                        className="flex-1 px-2.5 py-1.5 text-xs bg-bg-primary border border-border rounded-lg text-text-primary focus:outline-none focus:ring-1 focus:ring-accent/30"
+                      >
+                        {ROLE_GROUPS.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.roles.map((roleValue) => {
+                              const roleLabel = ROLE_LABEL_MAP.get(roleValue)
+                              if (!roleLabel) return null
+                              return (
+                                <option key={roleValue} value={roleLabel}>
+                                  {roleLabel}
+                                </option>
+                              )
+                            })}
+                          </optgroup>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 )
               })}
@@ -498,7 +690,7 @@ export function TopicInput() {
           )}
         >
           <Play className="w-4 h-4" />
-          토론 시작
+          {mode === 'battle' ? '결전 시작' : '토론 시작'}
         </button>
       </div>
     </div>

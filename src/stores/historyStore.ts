@@ -79,6 +79,8 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       round: msg.round,
       timestamp: msg.timestamp,
       error: msg.error,
+      messageType: msg.messageType,
+      roleName: msg.roleName,
     }))
 
     await debateDB.init()

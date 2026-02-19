@@ -1,13 +1,15 @@
-import { X, MessageSquare, Clock } from 'lucide-react'
+import { useState } from 'react'
+import { X, MessageSquare, Clock, Share2, Copy, Check } from 'lucide-react'
 import { useHistoryStore } from '@/stores/historyStore'
 import { MessageBubble } from './MessageBubble'
 import { PROVIDER_LABELS, PROVIDER_COLORS, type AIProvider, type DiscussionMessage } from '@/types'
-import { formatTimestampUTC } from '@/lib/utils'
+import { formatTimestampUTC, formatDebateForShare, shareText } from '@/lib/utils'
 
 const MODE_LABELS: Record<string, string> = {
   roundRobin: '라운드 로빈',
   freeDiscussion: '자유 토론',
   roleAssignment: '역할 배정',
+  battle: '결전모드',
 }
 
 export function HistoryViewer() {
@@ -15,6 +17,7 @@ export function HistoryViewer() {
   const selectedMessages = useHistoryStore((s) => s.selectedMessages)
   const debates = useHistoryStore((s) => s.debates)
   const clearSelection = useHistoryStore((s) => s.clearSelection)
+  const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'shared' | 'failed'>('idle')
 
   const debate = debates.find((d) => d.id === selectedDebateId)
   if (!debate) return null
@@ -29,7 +32,54 @@ export function HistoryViewer() {
     round: m.round,
     timestamp: m.timestamp,
     error: m.error,
+    messageType: m.messageType as DiscussionMessage['messageType'],
+    roleName: m.roleName,
   }))
+
+  const handleShare = async () => {
+    const text = formatDebateForShare(
+      debate.topic,
+      debate.mode,
+      debate.participants,
+      selectedMessages.map((m) => ({
+        provider: m.provider,
+        content: m.content,
+        round: m.round,
+        error: m.error,
+      })),
+      dateStr,
+    )
+
+    const result = await shareText(`AI 토론: ${debate.topic}`, text)
+    setShareStatus(result)
+
+    if (result !== 'failed') {
+      setTimeout(() => setShareStatus('idle'), 2500)
+    }
+  }
+
+  const handleCopy = async () => {
+    const text = formatDebateForShare(
+      debate.topic,
+      debate.mode,
+      debate.participants,
+      selectedMessages.map((m) => ({
+        provider: m.provider,
+        content: m.content,
+        round: m.round,
+        error: m.error,
+      })),
+      dateStr,
+    )
+
+    try {
+      await navigator.clipboard.writeText(text)
+      setShareStatus('copied')
+      setTimeout(() => setShareStatus('idle'), 2500)
+    } catch {
+      setShareStatus('failed')
+    }
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -74,14 +124,53 @@ export function HistoryViewer() {
               )}
             </div>
           </div>
-          <button
-            onClick={clearSelection}
-            className="p-1.5 hover:bg-bg-hover rounded-lg transition text-text-muted hover:text-text-primary shrink-0"
-            title="닫기"
-          >
-            <X className="w-4 h-4" />
-          </button>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Copy button */}
+            <button
+              onClick={() => void handleCopy()}
+              className="p-1.5 hover:bg-bg-hover rounded-lg transition text-text-muted hover:text-text-primary"
+              title="클립보드에 복사"
+            >
+              {shareStatus === 'copied' ? (
+                <Check className="w-4 h-4 text-success" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* Share button */}
+            <button
+              onClick={() => void handleShare()}
+              className="p-1.5 hover:bg-bg-hover rounded-lg transition text-text-muted hover:text-accent"
+              title="공유 (이메일, 카카오톡 등)"
+            >
+              {shareStatus === 'shared' ? (
+                <Check className="w-4 h-4 text-success" />
+              ) : (
+                <Share2 className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* Close button */}
+            <button
+              onClick={clearSelection}
+              className="p-1.5 hover:bg-bg-hover rounded-lg transition text-text-muted hover:text-text-primary"
+              title="닫기"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
+
+        {/* Share feedback toast */}
+        {shareStatus !== 'idle' && shareStatus !== 'failed' && (
+          <div className="mt-2 text-[11px] text-success font-medium animate-fade-in-up">
+            {shareStatus === 'copied' && '✓ 클립보드에 복사되었습니다'}
+            {shareStatus === 'shared' && '✓ 공유되었습니다'}
+          </div>
+        )}
       </div>
 
       {/* Messages */}

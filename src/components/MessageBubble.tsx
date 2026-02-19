@@ -11,25 +11,46 @@ interface Props {
 export function MessageBubble({ message }: Props) {
   const isUser = message.provider === 'user'
   const isError = !!message.error
+  const isJudgeEval = message.messageType === 'judge-evaluation'
   const color = isUser ? '#fbbf24' : PROVIDER_COLORS[message.provider as AIProvider]
   const label = isUser ? 'You' : PROVIDER_LABELS[message.provider as AIProvider]
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
 
+  const judgeColor = '#f59e0b' // amber-500
+
   return (
     <>
-      <div className={cn('flex gap-3 group', isError && 'opacity-50')}>
+      <div className={cn(
+        'flex gap-3 group',
+        isError && 'opacity-50',
+        isJudgeEval && 'bg-warning/5 rounded-xl p-3 border border-warning/20',
+      )}>
         {/* Color bar */}
         <div
-          className="w-0.5 shrink-0 rounded-full"
-          style={{ backgroundColor: color }}
+          className={cn('shrink-0 rounded-full', isJudgeEval ? 'w-1' : 'w-0.5')}
+          style={{ backgroundColor: isJudgeEval ? judgeColor : color }}
         />
 
         {/* Content */}
         <div className="min-w-0 flex-1 py-1.5">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[11px] font-semibold tracking-wide" style={{ color }}>
+            <span
+              className="text-[11px] font-semibold tracking-wide"
+              style={{ color: isJudgeEval ? judgeColor : color }}
+            >
               {label}
             </span>
+            {/* 역할 배지 (역할 배정 모드) */}
+            {message.roleName && !isJudgeEval && (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-accent/10 text-accent">
+                {message.roleName}
+              </span>
+            )}
+            {isJudgeEval && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-warning/15 text-warning">
+                ⚖️ 심판
+              </span>
+            )}
             <span className="text-[9px] text-text-muted font-medium px-1.5 py-0.5 rounded bg-bg-surface">
               R{message.round}
             </span>
