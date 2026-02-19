@@ -22,21 +22,11 @@ export default function App() {
   const selectedDebateId = useHistoryStore((s) => s.selectedDebateId)
   const theme = useSettingsStore((s) => s.theme)
 
-  // Set StatusBar non-overlay on mount (must run once before anything renders)
-  useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      void StatusBar.setOverlaysWebView({ overlay: false })
-    }
-  }, [])
-
-  // Sync theme colors with StatusBar
+  // Sync theme
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     if (Capacitor.isNativePlatform()) {
       void StatusBar.setStyle({ style: theme === 'dark' ? Style.Dark : Style.Light })
-      void StatusBar.setBackgroundColor({
-        color: theme === 'dark' ? '#191919' : '#ffffff',
-      })
     }
   }, [theme])
 
@@ -69,6 +59,9 @@ export default function App() {
 
       {/* Main Area */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Safe area spacer for Android/iOS status bar */}
+        <div className="shrink-0 bg-bg-secondary safe-area-top" />
+
         {/* Header */}
         <header className="h-12 border-b border-border flex items-center px-4 gap-3 shrink-0 bg-bg-secondary/80 backdrop-blur-sm">
           <button

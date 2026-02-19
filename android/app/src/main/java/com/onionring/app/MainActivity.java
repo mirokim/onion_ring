@@ -1,18 +1,9 @@
 package com.onionring.app;
 
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.net.wifi.WifiManager;
 import android.content.Context;
-import android.view.View;
-import android.view.Window;
-
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowCompat;
-import androidx.core.view.WindowInsetsCompat;
-import androidx.core.view.WindowInsetsControllerCompat;
-import androidx.core.graphics.Insets;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -24,20 +15,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        Window window = getWindow();
-
-        // Make system bars fully transparent so CSS background shows through
-        window.setStatusBarColor(Color.TRANSPARENT);
-        window.setNavigationBarColor(Color.TRANSPARENT);
-
-        // Apply system bar insets as padding so content doesn't overlap
-        View rootView = findViewById(android.R.id.content);
-        ViewCompat.setOnApplyWindowInsetsListener(rootView, (view, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-            view.setPadding(insets.left, insets.top, insets.right, insets.bottom);
-            return WindowInsetsCompat.CONSUMED;
-        });
 
         // Keep CPU active while debate is running (even with screen off)
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);

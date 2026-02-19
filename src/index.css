@@ -123,6 +123,11 @@ body {
   animation: subtle-pulse 2s ease-in-out infinite;
 }
 
+/* Safe area spacer for native status bar */
+.safe-area-top {
+  height: env(safe-area-inset-top, 0px);
+}
+
 /* Selection color */
 ::selection {
   background-color: rgba(46, 170, 220, 0.3);
