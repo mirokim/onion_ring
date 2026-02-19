@@ -203,6 +203,9 @@ export function UserIntervention() {
           e.target.value = ''
         }}
       />
+
+      {/* Safe area spacer for home bar */}
+      <div className="safe-area-bottom" />
     </div>
   )
 }
