@@ -41,7 +41,7 @@ export const secureStorage: StateStorage = {
     try {
       const parsed = JSON.parse(raw)
       if (parsed?.state?.configs) {
-        for (const provider of ['openai', 'anthropic', 'gemini']) {
+        for (const provider of ['openai', 'anthropic', 'gemini', 'xai']) {
           if (parsed.state.configs[provider]?.apiKey) {
             parsed.state.configs[provider].apiKey = deobfuscateApiKey(
               parsed.state.configs[provider].apiKey,
@@ -58,7 +58,7 @@ export const secureStorage: StateStorage = {
     try {
       const parsed = JSON.parse(value)
       if (parsed?.state?.configs) {
-        for (const provider of ['openai', 'anthropic', 'gemini']) {
+        for (const provider of ['openai', 'anthropic', 'gemini', 'xai']) {
           if (parsed.state.configs[provider]?.apiKey) {
             parsed.state.configs[provider].apiKey = obfuscateApiKey(
               parsed.state.configs[provider].apiKey,

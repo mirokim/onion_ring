@@ -85,6 +85,8 @@ export async function callProvider(
         return await callAnthropic(apiKey, model, systemPrompt, messages, signal)
       case 'gemini':
         return await callGemini(apiKey, model, systemPrompt, messages, signal)
+      case 'xai':
+        return await callOpenAI(apiKey, model, systemPrompt, messages, signal, 'https://api.x.ai/v1/chat/completions')
       default:
         return { content: `알 수 없는 프로바이더: ${String(provider)}`, stopReason: 'error' }
     }
@@ -110,6 +112,7 @@ async function callOpenAI(
   systemPrompt: string,
   messages: ApiMessage[],
   signal?: AbortSignal,
+  baseUrl = 'https://api.openai.com/v1/chat/completions',
 ): Promise<ProviderResponse> {
   const apiMessages = [
     { role: 'system', content: systemPrompt },
@@ -119,7 +122,7 @@ async function callOpenAI(
     })),
   ]
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(baseUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

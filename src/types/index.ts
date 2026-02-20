@@ -4,7 +4,7 @@ export type ThemeId = 'light' | 'dark'
 
 // ── Provider Types ──
 
-export type AIProvider = 'openai' | 'anthropic' | 'gemini'
+export type AIProvider = 'openai' | 'anthropic' | 'gemini' | 'xai'
 
 export interface AIConfig {
   provider: AIProvider
@@ -102,30 +102,34 @@ export interface DebateCallbacks {
 
 // ── Constants ──
 
-export const PROVIDERS: AIProvider[] = ['openai', 'anthropic', 'gemini']
+export const PROVIDERS: AIProvider[] = ['openai', 'anthropic', 'gemini', 'xai']
 
 export const PROVIDER_LABELS: Record<AIProvider, string> = {
   openai: 'GPT',
   anthropic: 'Claude',
   gemini: 'Gemini',
+  xai: 'Grok',
 }
 
 export const PROVIDER_COLORS: Record<AIProvider, string> = {
   openai: '#a6e3a1',
   anthropic: '#cba6f7',
   gemini: '#89b4fa',
+  xai: '#ef4444',
 }
 
 export const DEFAULT_MODELS: Record<AIProvider, string> = {
   openai: 'gpt-4.1',
   anthropic: 'claude-sonnet-4-5-20250929',
   gemini: 'gemini-2.5-flash',
+  xai: 'grok-3-fast',
 }
 
 export const MODEL_OPTIONS: Record<AIProvider, string[]> = {
   openai: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'o4-mini'],
   anthropic: ['claude-sonnet-4-5-20250929', 'claude-sonnet-4-20250514', 'claude-haiku-4-20250414'],
   gemini: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash'],
+  xai: ['grok-3-fast', 'grok-3', 'grok-3-mini-fast', 'grok-3-mini'],
 }
 
 // ── Role Options (카테고리별) ──

@@ -246,7 +246,7 @@ function ProviderStatusBadges() {
           />
         )
       })}
-      <span className="text-[10px] text-text-muted ml-0.5">{enabledCount}/3</span>
+      <span className="text-[10px] text-text-muted ml-0.5">{enabledCount}/{PROVIDERS.length}</span>
     </div>
   )
 }
